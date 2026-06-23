@@ -1,0 +1,6 @@
+<svg width="320" height="84" viewBox="0 0 320 84" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="6" y="6" width="72" height="72" rx="24" fill="#0B1524"/>
+  <path d="M58.3 49.8C62.77 45.5 67 40.26 67 33.8C67 26.18 60.82 20 53.2 20C48.47 20 45.22 21.58 41.9 24.9C38.58 21.58 35.33 20 30.6 20C22.98 20 16.8 26.18 16.8 33.8C16.8 40.27 21.03 45.5 25.5 49.8L41.9 65L58.3 49.8Z" fill="white"/>
+  <path d="M19.6 41.2H31.6L35 34.6L41.2 48.2L48.4 28L54 41.2H64.2" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="99" y="54" font-family="Arial, sans-serif" font-size="34" font-weight="800" fill="#0B1524">Triva<tspan fill="#149A82">care</tspan></text>
+</svg>

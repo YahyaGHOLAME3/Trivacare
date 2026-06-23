@@ -1,0 +1,12 @@
+<svg width="220" height="68" viewBox="0 0 220 68" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="4" y="4" width="56" height="56" rx="18" fill="url(#paint0_linear)"/>
+  <path d="M45 39.4C48.21 36.31 51.25 32.55 51.25 27.92C51.25 22.46 46.83 18.04 41.37 18.04C37.97 18.04 35.63 19.17 33.25 21.55C30.87 19.17 28.54 18.04 25.14 18.04C19.68 18.04 15.25 22.46 15.25 27.92C15.25 32.56 18.29 36.31 21.5 39.4L33.25 50.28L45 39.4Z" fill="white"/>
+  <path d="M17.3 33.2H25.9L28.35 28.5L32.8 38.25L37.95 23.8L41.95 33.2H49.3" stroke="#CDF2E7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="74" y="42" font-family="Arial, sans-serif" font-size="26" font-weight="800" fill="#0B1524">Triva<tspan fill="#149A82">care</tspan></text>
+  <defs>
+    <linearGradient id="paint0_linear" x1="10" y1="8" x2="54" y2="56" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0052CC"/>
+      <stop offset="1" stop-color="#149A82"/>
+    </linearGradient>
+  </defs>
+</svg>
