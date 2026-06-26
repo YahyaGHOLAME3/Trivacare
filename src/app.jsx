@@ -63,6 +63,7 @@ export function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/pet-preview" element={<PetPreview />} />
           <Route path="/connexion/:persona" element={<LoginPage />} />
+          <Route path="/inscription/:persona" element={<LoginPage />} />
           <Route
             path="/patient/:page"
             element={

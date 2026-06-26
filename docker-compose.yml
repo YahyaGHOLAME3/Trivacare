@@ -1,0 +1,37 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: trivacare-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - trivacare-mongo-data:/data/db
+    healthcheck:
+      test: ["CMD-SHELL", "mongosh --quiet --eval \"db.adminCommand('ping').ok\" mongodb://127.0.0.1:27017/admin | grep 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+    container_name: trivacare-backend
+    restart: unless-stopped
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      MONGODB_URI: ${MONGODB_URI:-mongodb://mongo:27017/trivacare}
+      PORT: ${PORT:-3001}
+      API_PREFIX: ${API_PREFIX:-}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-change-this-access-secret}
+      JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-change-this-refresh-secret}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+    ports:
+      - "3001:3001"
+
+volumes:
+  trivacare-mongo-data:

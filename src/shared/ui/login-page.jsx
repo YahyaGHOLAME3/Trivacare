@@ -1,16 +1,17 @@
 import { useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { AppIcon } from "../../assets/icons/app-icon";
-import { signIn } from "../auth";
+import { PERSONA_TO_ROLE, signIn, signUp } from "../auth";
 import { ThemeToggle } from "../theme";
 import { Button, Card, Field, Logo, inputClassName } from "./primitives";
 
 const PERSONAS = {
   patient: {
-    title: "Connexion patient",
+    title: "patient",
+    loginTitle: "Connexion patient",
+    signupTitle: "Créer un compte patient",
     emailLabel: "E-mail patient",
     passwordHint: "Accès individuel et confidentiel",
-    target: "/patient/tableau-de-bord",
     accent: "from-brand-600 to-teal-600",
     roleLabel: "Patient",
     switchLabel: "Accès patient",
@@ -18,10 +19,11 @@ const PERSONAS = {
     icon: "user-round",
   },
   clinique: {
-    title: "Connexion clinique",
+    title: "clinique",
+    loginTitle: "Connexion clinique",
+    signupTitle: "Créer un compte clinique",
     emailLabel: "E-mail établissement",
     passwordHint: "Accès réservé à la structure clinique",
-    target: "/clinique/tableau-de-bord",
     accent: "from-teal-600 to-teal-800",
     roleLabel: "Clinique",
     switchLabel: "Accès clinique",
@@ -29,10 +31,11 @@ const PERSONAS = {
     icon: "building-2",
   },
   professionnel: {
-    title: "Connexion professionnel de santé",
+    title: "professionnel de santé",
+    loginTitle: "Connexion professionnel de santé",
+    signupTitle: "Créer un compte professionnel",
     emailLabel: "E-mail professionnel",
     passwordHint: "Accès nominatif du praticien",
-    target: "/professionnel/tableau-de-bord",
     accent: "from-brand-700 to-brand-900",
     roleLabel: "Professionnel",
     switchLabel: "Accès professionnel",
@@ -41,12 +44,29 @@ const PERSONAS = {
   },
 };
 
+function getAuthErrorMessage(error) {
+  if (error instanceof Error && error.message) return error.message;
+  return "Impossible de traiter votre demande pour le moment.";
+}
+
 export function LoginPage() {
   const { persona = "patient" } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const isSignup = location.pathname.startsWith("/inscription/");
+  const [form, setForm] = useState({
+    firstName: "",
+    lastName: "",
+    phone: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    organizationName: "",
+    specialty: "",
+    licenseNumber: "",
+  });
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const config = useMemo(() => PERSONAS[persona] || PERSONAS.patient, [persona]);
   const otherPersonas = useMemo(
@@ -54,11 +74,49 @@ export function LoginPage() {
     [persona],
   );
 
-  const onSubmit = (event) => {
-    event.preventDefault();
-    signIn(persona);
-    navigate(location.state?.from || config.target, { replace: true });
+  const updateField = (key) => (event) => {
+    setForm((current) => ({ ...current, [key]: event.target.value }));
   };
+
+  const onSubmit = async (event) => {
+    event.preventDefault();
+    setError("");
+
+    if (isSignup && form.password !== form.confirmPassword) {
+      setError("Les mots de passe ne correspondent pas.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const session = isSignup
+        ? await signUp({
+            firstName: form.firstName,
+            lastName: form.lastName,
+            phone: form.phone,
+            email: form.email,
+            password: form.password,
+            role: PERSONA_TO_ROLE[persona] || PERSONA_TO_ROLE.patient,
+            organizationName: form.organizationName,
+            specialty: form.specialty,
+            licenseNumber: form.licenseNumber,
+          })
+        : await signIn({
+            email: form.email,
+            password: form.password,
+          });
+
+      navigate(location.state?.from || session.targetPath, { replace: true });
+    } catch (submitError) {
+      setError(getAuthErrorMessage(submitError));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const switchBasePath = isSignup ? "/inscription" : "/connexion";
+  const alternateModePath = isSignup ? "/connexion" : "/inscription";
 
   return (
     <div className="login-surface relative min-h-screen overflow-hidden bg-[linear-gradient(180deg,#f7f6f1_0%,#f1f5f9_100%)] transition-colors duration-300">
@@ -81,16 +139,98 @@ export function LoginPage() {
                   <Logo />
                 </button>
               </div>
-              <h2 className="mt-6 text-3xl font-extrabold">{config.title}</h2>
+              <h2 className="mt-6 text-3xl font-extrabold">
+                {isSignup ? config.signupTitle : config.loginTitle}
+              </h2>
+              <p className="mt-3 max-w-[34rem] text-sm text-white/85">
+                {isSignup
+                  ? "Créez un accès sécurisé pour rejoindre l’espace Trivacare correspondant à votre rôle."
+                  : "Accédez à votre espace sécurisé Trivacare avec vos identifiants."}
+              </p>
             </div>
 
             <div className="space-y-5 p-6 sm:p-8">
               <form className="space-y-4" onSubmit={onSubmit}>
+                {isSignup ? (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label="Prénom">
+                      <input
+                        type="text"
+                        value={form.firstName}
+                        onChange={updateField("firstName")}
+                        className={inputClassName}
+                        placeholder="Prénom"
+                        required
+                      />
+                    </Field>
+                    <Field label="Nom">
+                      <input
+                        type="text"
+                        value={form.lastName}
+                        onChange={updateField("lastName")}
+                        className={inputClassName}
+                        placeholder="Nom"
+                        required
+                      />
+                    </Field>
+                  </div>
+                ) : null}
+
+                {isSignup ? (
+                  <Field label="Téléphone">
+                    <input
+                      type="tel"
+                      value={form.phone}
+                      onChange={updateField("phone")}
+                      className={inputClassName}
+                      placeholder="+212 ..."
+                    />
+                  </Field>
+                ) : null}
+
+                {isSignup && persona === "clinique" ? (
+                  <Field label="Nom de la structure">
+                    <input
+                      type="text"
+                      value={form.organizationName}
+                      onChange={updateField("organizationName")}
+                      className={inputClassName}
+                      placeholder="Clinique Atlas"
+                      required
+                    />
+                  </Field>
+                ) : null}
+
+                {isSignup && persona === "professionnel" ? (
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label="Spécialité">
+                      <input
+                        type="text"
+                        value={form.specialty}
+                        onChange={updateField("specialty")}
+                        className={inputClassName}
+                        placeholder="Cardiologie"
+                        required
+                      />
+                    </Field>
+                    <Field label="N° d’autorisation">
+                      <input
+                        type="text"
+                        value={form.licenseNumber}
+                        onChange={updateField("licenseNumber")}
+                        className={inputClassName}
+                        placeholder="PRO-2026-001"
+                        required
+                      />
+                    </Field>
+                  </div>
+                ) : null}
+
                 <Field label={config.emailLabel}>
                   <input
                     type="email"
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
+                    value={form.email}
+                    onChange={updateField("email")}
                     className={inputClassName}
                     placeholder="nom@trivacare.ma"
                     required
@@ -99,41 +239,84 @@ export function LoginPage() {
                 <Field label="Mot de passe" hint={config.passwordHint}>
                   <input
                     type="password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
+                    value={form.password}
+                    onChange={updateField("password")}
                     className={inputClassName}
                     placeholder="••••••••••"
                     required
                   />
                 </Field>
 
+                {isSignup ? (
+                  <Field label="Confirmer le mot de passe">
+                    <input
+                      type="password"
+                      value={form.confirmPassword}
+                      onChange={updateField("confirmPassword")}
+                      className={inputClassName}
+                      placeholder="••••••••••"
+                      required
+                    />
+                  </Field>
+                ) : null}
+
+                {error ? (
+                  <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+                    {error}
+                  </div>
+                ) : null}
+
                 <div className="flex flex-col gap-3 pt-2 sm:flex-row">
-                  <Button type="submit" variant="primary" className="flex-1">
-                    Se connecter
+                  <Button type="submit" variant="primary" className="flex-1" disabled={isSubmitting}>
+                    {isSubmitting
+                      ? "Traitement..."
+                      : isSignup
+                        ? "Créer mon compte"
+                        : "Se connecter"}
                   </Button>
                   <Button
                     type="button"
                     variant="ghost"
                     className="flex-1"
                     onClick={() => navigate("/")}
+                    disabled={isSubmitting}
                   >
-                    Retour à l&apos;accueil
+                    Retour à l'accueil
                   </Button>
                 </div>
               </form>
+
+              <div className="auth-switch-card rounded-[1.5rem] border border-slate-200 bg-slate-50/80 px-4 py-4 text-sm text-slate-600">
+                <p className="font-bold text-ink">
+                  {isSignup ? "Vous avez déjà un compte ?" : "Vous n'avez pas encore de compte ?"}
+                </p>
+                <p className="auth-switch-copy mt-1">
+                  {isSignup
+                    ? "Reconnectez-vous avec vos identifiants existants."
+                    : "Créez un accès en quelques secondes selon votre profil Trivacare."}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => navigate(`${alternateModePath}/${persona}`)}
+                  className="auth-switch-link mt-3 inline-flex items-center gap-2 text-sm font-bold text-brand-700 transition-opacity hover:opacity-80"
+                >
+                  {isSignup ? "Aller à la connexion" : "Créer un compte"}
+                  <AppIcon name="arrow-right" size={16} />
+                </button>
+              </div>
             </div>
           </Card>
 
           <div className="motion-fade-up motion-delay-2 mx-auto mt-6 max-w-lg">
             <p className="text-center text-[11px] font-bold uppercase tracking-[0.22em] text-slate-400">
-              Vous n&apos;êtes pas {config.roleLabel.toLowerCase()} ?
+              Basculer vers un autre espace
             </p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {otherPersonas.map(([key, item]) => (
                 <button
                   key={key}
                   type="button"
-                  onClick={() => navigate(`/connexion/${key}`)}
+                  onClick={() => navigate(`${switchBasePath}/${key}`)}
                   className="login-persona-card motion-card group relative overflow-hidden rounded-[2rem] border border-white/80 bg-white/75 p-4 text-left shadow-[0_18px_40px_-28px_rgba(11,21,36,0.28)] backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:border-slate-200 hover:bg-white/92"
                 >
                   <div className="login-persona-glow absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(255,255,255,0.55),_transparent_40%)]" />

@@ -63,7 +63,7 @@ function SosMapPreview() {
         Maroc
       </div>
       <div className="pointer-events-none absolute bottom-7 left-3 z-[500] rounded-full bg-[#0f1d31]/92 px-3 py-1.5 text-[11px] font-semibold text-white shadow-sm backdrop-blur-sm">
-        Point d&apos;urgence · Marrakech
+        Point d'urgence · Marrakech
       </div>
     </div>
   );
@@ -123,7 +123,7 @@ export function SosModal({ open, onClose, title, body }) {
                 Annuler
               </Button>
               <Button variant="danger" className="flex-1" onClick={() => setSent(true)}>
-                Confirmer l&apos;alerte
+                Confirmer l'alerte
               </Button>
             </div>
           </>

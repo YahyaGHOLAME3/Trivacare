@@ -286,6 +286,25 @@ body {
   background: radial-gradient(circle at top right, rgba(102, 210, 186, 0.1), transparent 42%);
 }
 
+.dark .auth-switch-card {
+  border-color: rgba(71, 85, 105, 0.56);
+  background:
+    linear-gradient(180deg, rgba(16, 30, 48, 0.98), rgba(11, 23, 39, 0.96));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.dark .auth-switch-copy {
+  color: #a7b4c7;
+}
+
+.dark .auth-switch-link {
+  color: #8cb8ff;
+}
+
+.dark .auth-switch-link:hover {
+  color: #bfd7ff;
+}
+
 .dark .persona-card > [class~="from-white"] {
   --tw-gradient-from: #0b1727 var(--tw-gradient-from-position);
   --tw-gradient-to: rgb(11 23 39 / 0) var(--tw-gradient-to-position);

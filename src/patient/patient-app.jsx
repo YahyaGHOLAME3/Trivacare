@@ -205,7 +205,7 @@ function MedicalPage() {
               <div className="h-3 w-[88%] rounded-full bg-gradient-to-r from-brand-600 to-teal-500" />
             </div>
             <p className="mt-2 text-sm text-slate-500">
-              Ajoutez votre carte d&apos;assurance pour atteindre 100%.
+              Ajoutez votre carte d'assurance pour atteindre 100%.
             </p>
           </Card>
           <Card className="p-5">
@@ -238,7 +238,7 @@ function TravelPage() {
         subtitle="Construisez votre itinéraire et préparez la coordination médicale à chaque étape."
       >
         <Button variant="ghost" icon="route">Exporter</Button>
-        <Button variant="primary" icon="check-check">Valider l&apos;itinéraire</Button>
+        <Button variant="primary" icon="check-check">Valider l'itinéraire</Button>
       </PageHeader>
       <div className="metric-grid xl:grid-cols-3">
         <StatCard icon="map-pin" label="Étapes" value={`${patientTrip.stops.length}`} sub="villes au Maroc" />
@@ -291,7 +291,7 @@ function TravelPage() {
             </Field>
           </div>
           <Button variant="primary" icon="plus" className="w-full">
-            Ajouter l&apos;étape
+            Ajouter l'étape
           </Button>
         </Card>
       </div>
@@ -512,7 +512,7 @@ function HelpPage() {
         <div className="space-y-5">
           <Card className="overflow-hidden">
             <div className="bg-gradient-to-br from-ink to-brand-950 p-6 text-white">
-              <h3 className="text-2xl font-extrabold">Visite guidée de l&apos;application</h3>
+              <h3 className="text-2xl font-extrabold">Visite guidée de l'application</h3>
               <p className="mt-2 text-sm text-slate-300">
                 Découvrez le dossier médical, les voyages, les rendez-vous, la facturation et la sécurité.
               </p>
@@ -539,7 +539,7 @@ function HelpPage() {
         </div>
         <div className="space-y-5">
           <Card className="p-5">
-            <h3 className="text-lg font-bold text-ink">Besoin d&apos;aide humaine ?</h3>
+            <h3 className="text-lg font-bold text-ink">Besoin d'aide humaine ?</h3>
             <p className="mt-2 text-sm text-slate-500">
               Votre coordinatrice reste disponible pour répondre aux questions liées au séjour médical.
             </p>

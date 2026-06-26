@@ -30,7 +30,7 @@ function ClinicDashboard() {
         <Card className="overflow-hidden">
           <div className="bg-gradient-to-br from-teal-600 to-teal-800 p-6 text-white">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-teal-100">Admissions du jour</p>
-            <h2 className="mt-2 text-2xl font-extrabold">Vision opérationnelle de l&apos;établissement</h2>
+            <h2 className="mt-2 text-2xl font-extrabold">Vision opérationnelle de l'établissement</h2>
             <p className="mt-2 max-w-2xl text-sm text-teal-50">
               Chaque admission, transfert et document clinique est centralisé dans un espace réservé à la structure.
             </p>
@@ -67,7 +67,7 @@ function ClinicDashboard() {
           <Card className="p-5">
             <h3 className="mb-4 text-lg font-bold text-ink">Coordination Trivacare</h3>
             <p className="text-sm text-slate-500">
-              Les échanges avec la coordination sont réservés à l&apos;établissement et ne sont pas visibles par les autres personas.
+              Les échanges avec la coordination sont réservés à l'établissement et ne sont pas visibles par les autres personas.
             </p>
           </Card>
         </div>
