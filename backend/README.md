@@ -18,7 +18,7 @@ NestJS + MongoDB backend for Trivacare authentication and user onboarding.
 - `JWT_REFRESH_SECRET`: refresh token signing secret
 - `JWT_REFRESH_EXPIRES_IN`: refresh token lifetime
 - `API_PREFIX`: optional global prefix, leave empty to keep routes like `/auth/login`
-- `CORS_ORIGIN`: frontend origin allowed for CORS
+- `CORS_ORIGIN`: comma-separated frontend origins allowed for CORS
 
 ## Running
 
@@ -26,6 +26,8 @@ NestJS + MongoDB backend for Trivacare authentication and user onboarding.
 - Build: `npm run build`
 - Prod: `npm run start:prod`
 - Docker stack: `docker compose up -d`
+
+Note: `npm run dev` starts the API directly with `ts-node`. Hot reload is not configured in this repo.
 
 ## Roles
 

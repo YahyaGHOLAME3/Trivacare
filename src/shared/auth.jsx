@@ -1,7 +1,16 @@
 import { Navigate, useLocation } from "react-router-dom";
 
 const STORAGE_PREFIX = "trivacare_session_";
-const API_URL = (import.meta.env.VITE_API_URL || "http://localhost:3001").replace(/\/$/, "");
+
+function getDefaultApiUrl() {
+  if (typeof window === "undefined") {
+    return "http://127.0.0.1:3001";
+  }
+
+  return `${window.location.protocol}//${window.location.hostname}:3001`;
+}
+
+const API_URL = (import.meta.env.VITE_API_URL || getDefaultApiUrl()).replace(/\/$/, "");
 
 export const PERSONA_TO_ROLE = {
   patient: "PATIENT",
