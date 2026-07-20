@@ -15,7 +15,7 @@ function PIcon({ name, size = 22, className = "", strokeWidth = 2, style }) {
 /* ---- patient + domain data ---- */
 const PATIENT = {
   first: "Amine", last: "El Fassi", initials: "AE",
-  email: "amine.elfassi@gmail.com", phone: "+212 6 61 24 88 03",
+  email: "amine.elfassi@example.test", phone: "+212 6 61 24 88 03",
   profile: "Maladie chronique · Diabète type 2", dob: "14/03/1968", nationality: "Franco-marocaine",
   insurer: "Allianz Travel — Police N° TR-99820145", blood: "O+",
   city: "Marrakech", coordinator: "Dr. Salma Amrani",

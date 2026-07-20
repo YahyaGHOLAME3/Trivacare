@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Put, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Put, Query } from '@nestjs/common';
 import { Role } from '@prisma/client';
 
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -26,6 +26,11 @@ export class ProfessionalsController {
     return this.professionalsService.getMe(user.userId);
   }
 
+  @Get('me/dashboard')
+  async getDashboard(@CurrentUser() user: RequestUser) {
+    return this.professionalsService.getDashboard(user.userId);
+  }
+
   @Get('me/appointments')
   async getMyAppointments(
     @CurrentUser() user: RequestUser,
@@ -40,5 +45,30 @@ export class ProfessionalsController {
     @Query() dto: PaginationQueryDto,
   ) {
     return this.professionalsService.getMyPatients(user.userId, dto);
+  }
+
+  @Get('me/patient-files/:patientId')
+  async getPatientFile(
+    @CurrentUser() user: RequestUser,
+    @Param('patientId') patientId: string,
+    @Query() dto: PaginationQueryDto,
+  ) {
+    return this.professionalsService.getPatientFile(user.userId, patientId, dto);
+  }
+
+  @Get('me/documents')
+  async getMyDocuments(
+    @CurrentUser() user: RequestUser,
+    @Query() dto: PaginationQueryDto,
+  ) {
+    return this.professionalsService.getMyDocuments(user.userId, dto);
+  }
+
+  @Get('me/notes')
+  async getMyNotes(
+    @CurrentUser() user: RequestUser,
+    @Query() dto: PaginationQueryDto,
+  ) {
+    return this.professionalsService.getMyNotes(user.userId, dto);
   }
 }

@@ -18,6 +18,7 @@ export function AppShell({
   headerActions,
   persona,
   profileHref,
+  notifications: providedNotifications,
 }) {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -28,26 +29,10 @@ export function AppShell({
     [current, navItems],
   );
   const notifications = useMemo(() => {
+    if (providedNotifications) return providedNotifications;
+
     const byPersona = {
       patient: [
-        {
-          title: "Rendez-vous confirmé",
-          body: "Votre consultation cardiologique du 27 juin à 14:30 est confirmée.",
-          meta: "Il y a 8 min",
-          tone: "bg-brand-50 text-brand-700",
-        },
-        {
-          title: "Document reçu",
-          body: "Un nouveau document médical a été ajouté à votre dossier.",
-          meta: "Il y a 24 min",
-          tone: "bg-teal-50 text-teal-700",
-        },
-        {
-          title: "Message de coordination",
-          body: "Votre coordinatrice vous a laissé un message sécurisé.",
-          meta: "Aujourd'hui",
-          tone: "bg-slate-100 text-slate-600",
-        },
       ],
       clinique: [
         {
@@ -92,7 +77,7 @@ export function AppShell({
     };
 
     return byPersona[persona] || byPersona.patient;
-  }, [persona]);
+  }, [persona, providedNotifications]);
 
   const handleLogout = () => {
     if (persona) signOut(persona);
@@ -138,10 +123,10 @@ export function AppShell({
                 setMobileOpen(false);
               }}
               className={[
-                "relative flex h-11 w-full items-center gap-3 rounded-xl px-3.5 text-left text-sm font-semibold transition-colors",
+                "relative flex h-11 w-full items-center gap-3 rounded-xl px-3.5 text-left text-sm font-semibold transition-all",
                 active
-                  ? "bg-brand-50 text-brand-700"
-                  : "text-slate-600 hover:bg-slate-100 hover:text-ink",
+                  ? "bg-brand-50 text-brand-700 shadow-soft"
+                  : "text-slate-600 hover:bg-slate-100 hover:text-ink hover:translate-x-0.5",
               ].join(" ")}
             >
               <span
@@ -193,8 +178,8 @@ export function AppShell({
   );
 
   return (
-    <div className="app-shell">
-      <aside className="hidden h-[calc(100vh-110px)] rounded-5xl border border-slate-200 bg-white lg:flex lg:flex-col">
+    <div className={`app-shell app-shell--${persona || "default"}`}>
+      <aside className="hidden min-h-[calc(100vh-40px)] self-stretch rounded-[2rem] border border-slate-200 bg-white/90 shadow-lift backdrop-blur-xl lg:flex lg:flex-col">
         {Nav}
       </aside>
 
@@ -211,7 +196,7 @@ export function AppShell({
       ) : null}
 
       <div className="dashboard-content min-w-0">
-        <header className="motion-fade-down relative z-30 mb-5 rounded-4xl border border-slate-200 bg-white/90 px-4 py-4 backdrop-blur-xl sm:px-5">
+        <header className="motion-fade-down relative z-30 mb-5 rounded-[2rem] border border-slate-200 bg-white/90 px-4 py-4 shadow-soft backdrop-blur-xl sm:px-5">
           <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
@@ -236,7 +221,9 @@ export function AppShell({
                   onClick={() => setNotificationsOpen((value) => !value)}
                 >
                   <AppIcon name="bell" size={18} />
-                  <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white" />
+                  {notifications.length ? (
+                    <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-white" />
+                  ) : null}
                 </button>
 
                 {notificationsOpen ? (
@@ -249,7 +236,7 @@ export function AppShell({
                       <div className="flex items-center justify-between gap-3">
                         <div>
                           <p className="text-sm font-extrabold text-ink">Notifications</p>
-                          <p className="mt-1 text-xs text-slate-400">Aperçu front-end du menu de notifications</p>
+                          <p className="mt-1 text-xs text-slate-400">Alertes liées à votre espace</p>
                         </div>
                         <span className="inline-flex min-w-6 justify-center rounded-full bg-rose-50 px-2 py-1 text-xs font-bold text-rose-700">
                           {notifications.length}
@@ -258,8 +245,9 @@ export function AppShell({
                     </div>
 
                     <div className="max-h-[min(420px,calc(100vh-9rem))] overflow-y-auto overscroll-contain px-3 py-3">
-                      <div className="space-y-2">
-                        {notifications.map((item) => (
+                      {notifications.length ? (
+                        <div className="space-y-2">
+                          {notifications.map((item) => (
                           <button
                             key={`${item.title}-${item.meta}`}
                             type="button"
@@ -274,8 +262,13 @@ export function AppShell({
                               <span className="mt-2 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">{item.meta}</span>
                             </span>
                           </button>
-                        ))}
-                      </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="rounded-2xl bg-slate-50 px-4 py-4 text-sm font-medium text-slate-500">
+                          Aucune notification pour le moment.
+                        </p>
+                      )}
                     </div>
                   </div>
                 ) : null}

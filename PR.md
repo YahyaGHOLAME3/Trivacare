@@ -167,6 +167,7 @@ Critères d'acceptation:
 - aucune page principale n'est laissée vide
 - les états mockés sont réalistes et cohérents
 - la structure du dépôt est propre et compréhensible
+- securité
 
 ## Migration et backend différés
 

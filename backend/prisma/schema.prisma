@@ -31,24 +31,91 @@ enum AppointmentStatus {
   COMPLETED
 }
 
+enum TripStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum ConversationAnchorType {
+  PATIENT_CASE
+  TRIP_PLAN
+  APPOINTMENT
+  BILLING_ITEM
+}
+
+enum ConversationParticipantRole {
+  PATIENT
+  COORDINATOR
+  CLINIC_USER
+  PROFESSIONAL
+}
+
+enum MessageReceiptStatus {
+  UNREAD
+  READ
+}
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  APPROVED
+  DECLINED
+  EXPIRED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PAID
+  VOID
+  OVERDUE
+}
+
+enum PaymentIntentStatus {
+  REQUIRES_APPROVAL
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+enum BillingProviderEventStatus {
+  RECEIVED
+  PROCESSED
+  FAILED
+}
+
+enum MfaMethodType {
+  TOTP
+}
+
 model User {
-  id                  String                @id @default(uuid())
-  email               String                @unique
-  passwordHash        String
-  role                Role
-  firstName           String?
-  lastName            String?
-  phone               String?
-  isActive            Boolean               @default(true)
-  createdAt           DateTime              @default(now())
-  updatedAt           DateTime              @updatedAt
-  patientProfile      PatientProfile?
-  professionalProfile ProfessionalProfile?
-  clinicMemberships   ClinicMember[]
-  refreshTokens       RefreshToken[]
-  uploadedDocuments   MedicalDocument[]     @relation("UploadedDocuments")
-  auditLogs           AuditLog[]            @relation("AuditActor")
-  createdAppointments Appointment[]         @relation("AppointmentCreator")
+  id                       String                    @id @default(uuid())
+  email                    String                    @unique
+  passwordHash             String
+  role                     Role
+  firstName                String?
+  lastName                 String?
+  phone                    String?
+  isActive                 Boolean                   @default(true)
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
+  patientProfile           PatientProfile?
+  professionalProfile      ProfessionalProfile?
+  clinicMemberships        ClinicMember[]
+  uploadedDocuments        MedicalDocument[]         @relation("UploadedDocuments")
+  auditLogs                AuditLog[]                @relation("AuditActor")
+  createdAppointments      Appointment[]             @relation("AppointmentCreator")
+  sessions                 UserSession[]
+  mfaMethods               MfaMethod[]
+  recoveryCodes            RecoveryCode[]
+  conversationParticipants ConversationParticipant[]
+  sentMessages             Message[]                 @relation("MessageSender")
+  messageReceipts          MessageReceipt[]
+  billingProviderEvents    BillingProviderEvent[]    @relation("BillingProviderEventActor")
 
   @@index([role])
 }
@@ -59,8 +126,14 @@ model PatientProfile {
   dateOfBirth           DateTime?
   gender                String?
   address               String?
+  nationality           String?
+  insurer               String?
+  bloodType             String?
+  medicalSummary        String?
+  primaryCoordinator    String?
   emergencyContactName  String?
   emergencyContactPhone String?
+  notificationPreferences Json?
   createdAt             DateTime          @default(now())
   updatedAt             DateTime          @updatedAt
   user                  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -68,6 +141,11 @@ model PatientProfile {
   appointments          Appointment[]
   documents             MedicalDocument[]
   notes                 ClinicalNote[]
+  tripPlans             TripPlan[]
+  conversations         Conversation[]
+  quotes                Quote[]
+  invoices              Invoice[]
+  paymentIntents        PaymentIntent[]
 }
 
 model Clinic {
@@ -82,6 +160,9 @@ model Clinic {
   members      ClinicMember[]
   careRequests CareRequest[]
   appointments Appointment[]
+  tripStops    TripStop[]
+  quotes       Quote[]
+  invoices     Invoice[]
 }
 
 model ClinicMember {
@@ -99,36 +180,38 @@ model ClinicMember {
 }
 
 model ProfessionalProfile {
-  id                  String         @id @default(uuid())
-  userId              String         @unique
-  specialty           String?
-  licenseNumber       String?
-  bio                 String?
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
-  user                User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  careRequests        CareRequest[]  @relation("CareRequestProfessional")
-  appointments        Appointment[]
-  notes               ClinicalNote[]
+  id            String         @id @default(uuid())
+  userId        String         @unique
+  specialty     String?
+  licenseNumber String?
+  bio           String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  careRequests  CareRequest[]  @relation("CareRequestProfessional")
+  appointments  Appointment[]
+  notes         ClinicalNote[]
+  tripStops     TripStop[]
 }
 
 model CareRequest {
-  id            String            @id @default(uuid())
-  patientId     String
-  clinicId      String?
+  id             String               @id @default(uuid())
+  patientId      String
+  clinicId       String?
   professionalId String?
-  title         String
-  description   String
-  preferredDate DateTime?
-  status        CareRequestStatus @default(DRAFT)
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
-  patient       PatientProfile    @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  clinic        Clinic?           @relation(fields: [clinicId], references: [id], onDelete: SetNull)
-  professional  ProfessionalProfile? @relation("CareRequestProfessional", fields: [professionalId], references: [id], onDelete: SetNull)
-  appointments  Appointment[]
-  documents     MedicalDocument[]
-  notes         ClinicalNote[]
+  title          String
+  description    String
+  preferredDate  DateTime?
+  status         CareRequestStatus    @default(DRAFT)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  patient        PatientProfile       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  clinic         Clinic?              @relation(fields: [clinicId], references: [id], onDelete: SetNull)
+  professional   ProfessionalProfile? @relation("CareRequestProfessional", fields: [professionalId], references: [id], onDelete: SetNull)
+  appointments   Appointment[]
+  documents      MedicalDocument[]
+  notes          ClinicalNote[]
+  conversations  Conversation[]
 
   @@index([patientId])
   @@index([clinicId])
@@ -137,7 +220,7 @@ model CareRequest {
 }
 
 model Appointment {
-  id                 String            @id @default(uuid())
+  id                 String               @id @default(uuid())
   patientId          String
   clinicId           String?
   professionalId     String?
@@ -148,15 +231,17 @@ model Appointment {
   location           String?
   notes              String?
   cancellationReason String?
-  status             AppointmentStatus @default(REQUESTED)
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
-  patient            PatientProfile    @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  clinic             Clinic?           @relation(fields: [clinicId], references: [id], onDelete: SetNull)
+  status             AppointmentStatus    @default(REQUESTED)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  patient            PatientProfile       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  clinic             Clinic?              @relation(fields: [clinicId], references: [id], onDelete: SetNull)
   professional       ProfessionalProfile? @relation(fields: [professionalId], references: [id], onDelete: SetNull)
-  careRequest        CareRequest?      @relation(fields: [careRequestId], references: [id], onDelete: SetNull)
-  createdBy          User?             @relation("AppointmentCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  careRequest        CareRequest?         @relation(fields: [careRequestId], references: [id], onDelete: SetNull)
+  createdBy          User?                @relation("AppointmentCreator", fields: [createdById], references: [id], onDelete: SetNull)
   clinicalNotes      ClinicalNote[]
+  tripStops          TripStop[]
+  conversations      Conversation[]
 
   @@index([patientId])
   @@index([clinicId])
@@ -187,18 +272,18 @@ model MedicalDocument {
 }
 
 model ClinicalNote {
-  id            String               @id @default(uuid())
-  patientId     String
+  id             String              @id @default(uuid())
+  patientId      String
   professionalId String
-  careRequestId String?
-  appointmentId String?
-  content       String
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
-  patient       PatientProfile       @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  professional  ProfessionalProfile  @relation(fields: [professionalId], references: [id], onDelete: Cascade)
-  careRequest   CareRequest?         @relation(fields: [careRequestId], references: [id], onDelete: SetNull)
-  appointment   Appointment?         @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  careRequestId  String?
+  appointmentId  String?
+  content        String
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  patient        PatientProfile      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  professional   ProfessionalProfile @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  careRequest    CareRequest?        @relation(fields: [careRequestId], references: [id], onDelete: SetNull)
+  appointment    Appointment?        @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
 
   @@index([patientId])
   @@index([professionalId])
@@ -222,15 +307,240 @@ model AuditLog {
   @@index([createdAt])
 }
 
-model RefreshToken {
-  id        String   @id @default(uuid())
+model TripPlan {
+  id          String         @id @default(uuid())
+  patientId   String
+  title       String
+  destination String?
+  startDate   DateTime?
+  endDate     DateTime?
+  status      TripStatus     @default(DRAFT)
+  notes       String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  patient     PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  stops       TripStop[]
+
+  @@index([patientId])
+  @@index([status])
+  @@index([startDate])
+}
+
+model TripStop {
+  id             String               @id @default(uuid())
+  tripPlanId     String
+  clinicId       String?
+  professionalId String?
+  appointmentId  String?
+  title          String
+  location       String?
+  stopDate       DateTime?
+  position       Int
+  notes          String?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  tripPlan       TripPlan             @relation(fields: [tripPlanId], references: [id], onDelete: Cascade)
+  clinic         Clinic?              @relation(fields: [clinicId], references: [id], onDelete: SetNull)
+  professional   ProfessionalProfile? @relation(fields: [professionalId], references: [id], onDelete: SetNull)
+  appointment    Appointment?         @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  @@unique([tripPlanId, position])
+  @@index([tripPlanId])
+  @@index([clinicId])
+  @@index([professionalId])
+  @@index([appointmentId])
+}
+
+model Conversation {
+  id            String                    @id @default(uuid())
+  patientId     String
+  careRequestId String?
+  appointmentId String?
+  anchorType    ConversationAnchorType
+  anchorId      String
+  subject       String
+  createdAt     DateTime                  @default(now())
+  updatedAt     DateTime                  @updatedAt
+  patient       PatientProfile            @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  careRequest   CareRequest?              @relation(fields: [careRequestId], references: [id], onDelete: SetNull)
+  appointment   Appointment?              @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  participants  ConversationParticipant[]
+  messages      Message[]
+
+  @@index([patientId])
+  @@index([careRequestId])
+  @@index([appointmentId])
+  @@index([anchorType, anchorId])
+}
+
+model ConversationParticipant {
+  id             String                      @id @default(uuid())
+  conversationId String
+  userId         String
+  role           ConversationParticipantRole
+  createdAt      DateTime                    @default(now())
+  conversation   Conversation                @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+}
+
+model Message {
+  id             String           @id @default(uuid())
+  conversationId String
+  senderId       String
+  body           String
+  attachments    Json?
+  createdAt      DateTime         @default(now())
+  conversation   Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User             @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receipts       MessageReceipt[]
+
+  @@index([conversationId])
+  @@index([senderId])
+  @@index([createdAt])
+}
+
+model MessageReceipt {
+  id        String               @id @default(uuid())
+  messageId String
   userId    String
-  tokenHash String
-  expiresAt DateTime
-  revokedAt DateTime?
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status    MessageReceiptStatus @default(UNREAD)
+  readAt    DateTime?
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+  message   Message              @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@index([userId, status])
+}
+
+model Quote {
+  id          String         @id @default(uuid())
+  patientId   String
+  clinicId    String?
+  title       String
+  description String?
+  currency    String         @default("MAD")
+  amount      Int
+  status      QuoteStatus    @default(DRAFT)
+  approvedAt  DateTime?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  patient     PatientProfile @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  clinic      Clinic?        @relation(fields: [clinicId], references: [id], onDelete: SetNull)
+  invoices    Invoice[]
+
+  @@index([patientId])
+  @@index([clinicId])
+  @@index([status])
+}
+
+model Invoice {
+  id             String          @id @default(uuid())
+  patientId      String
+  clinicId       String?
+  quoteId        String?
+  number         String          @unique
+  currency       String          @default("MAD")
+  amount         Int
+  status         InvoiceStatus   @default(DRAFT)
+  issuedAt       DateTime?
+  dueAt          DateTime?
+  paidAt         DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  patient        PatientProfile  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  clinic         Clinic?         @relation(fields: [clinicId], references: [id], onDelete: SetNull)
+  quote          Quote?          @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+  paymentIntents PaymentIntent[]
+
+  @@index([patientId])
+  @@index([clinicId])
+  @@index([quoteId])
+  @@index([status])
+}
+
+model PaymentIntent {
+  id               String              @id @default(uuid())
+  patientId        String
+  invoiceId        String?
+  provider         String?
+  providerIntentId String?
+  currency         String              @default("MAD")
+  amount           Int
+  status           PaymentIntentStatus @default(REQUIRES_APPROVAL)
+  approvedAt       DateTime?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  patient          PatientProfile      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  invoice          Invoice?            @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
+  @@index([patientId])
+  @@index([invoiceId])
+  @@index([provider, providerIntentId])
+  @@index([status])
+}
+
+model BillingProviderEvent {
+  id              String                     @id @default(uuid())
+  provider        String
+  providerEventId String?
+  paymentIntentId String?
+  status          BillingProviderEventStatus @default(RECEIVED)
+  payload         Json
+  processedAt     DateTime?
+  actorId         String?
+  createdAt       DateTime                   @default(now())
+  actor           User?                      @relation("BillingProviderEventActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@unique([provider, providerEventId])
+  @@index([paymentIntentId])
+  @@index([status])
+}
+
+model UserSession {
+  id               String    @id @default(uuid())
+  userId           String
+  refreshTokenHash String
+  userAgent        String?
+  ipAddress        String?
+  expiresAt        DateTime
+  lastSeenAt       DateTime  @default(now())
+  revokedAt        DateTime?
+  createdAt        DateTime  @default(now())
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([expiresAt])
+  @@index([revokedAt])
+}
+
+model MfaMethod {
+  id         String        @id @default(uuid())
+  userId     String
+  type       MfaMethodType
+  secret     String
+  verifiedAt DateTime?
+  disabledAt DateTime?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+}
+
+model RecoveryCode {
+  id        String    @id @default(uuid())
+  userId    String
+  codeHash  String
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([usedAt])
 }

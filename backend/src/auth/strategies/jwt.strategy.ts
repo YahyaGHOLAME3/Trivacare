@@ -9,6 +9,7 @@ import { RequestUser } from '../../common/interfaces/request-user.interface';
 interface JwtPayload {
   userId: string;
   role: Role;
+  sessionId?: string;
 }
 
 @Injectable()
@@ -25,6 +26,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     return {
       userId: payload.userId,
       role: payload.role,
+      sessionId: payload.sessionId,
     };
   }
 }

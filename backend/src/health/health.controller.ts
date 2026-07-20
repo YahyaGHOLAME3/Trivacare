@@ -1,24 +1,20 @@
 import { Controller, Get } from '@nestjs/common';
-import { InjectConnection } from '@nestjs/mongoose';
-import { Connection } from 'mongoose';
 
 import { Public } from '../common/decorators/public.decorator';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Controller('health')
 export class HealthController {
-  constructor(
-    @InjectConnection()
-    private readonly connection: Connection,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   @Public()
   @Get()
   async check() {
-    await this.connection.db?.admin().ping();
+    await this.prisma.$queryRaw`SELECT 1`;
 
     return {
       status: 'ok',
-      database: this.connection.readyState === 1 ? 'connected' : 'disconnected',
+      database: 'connected',
       timestamp: new Date().toISOString(),
     };
   }

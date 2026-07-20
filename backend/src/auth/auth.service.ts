@@ -6,43 +6,43 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { InjectModel } from '@nestjs/mongoose';
+import { Prisma, Role, User } from '@prisma/client';
 import * as argon2 from 'argon2';
-import { Model, Types } from 'mongoose';
 
-import { Role } from '../common/enums/role.enum';
+import { AuditLogsService } from '../audit-logs/audit-logs.service';
 import { durationToMilliseconds } from '../common/utils/duration.util';
+import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
-import { UserDocument } from '../users/schemas/user.schema';
 import { toPublicUser } from '../users/user.mapper';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { RegisterDto } from './dto/register.dto';
-import {
-  RefreshToken,
-  RefreshTokenDocument,
-} from './schemas/refresh-token.schema';
+
+interface RequestMetadata {
+  [key: string]: string | undefined;
+  userAgent?: string;
+  ipAddress?: string;
+}
 
 interface AccessTokenPayload {
   userId: string;
   role: Role;
+  sessionId: string;
 }
 
-interface RefreshTokenPayload extends AccessTokenPayload {
-  tokenId: string;
-}
+interface RefreshTokenPayload extends AccessTokenPayload {}
 
 @Injectable()
 export class AuthService {
   constructor(
-    @InjectModel(RefreshToken.name)
-    private readonly refreshTokenModel: Model<RefreshTokenDocument>,
+    private readonly prisma: PrismaService,
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly auditLogsService: AuditLogsService,
   ) {}
 
-  async register(dto: RegisterDto) {
+  async register(dto: RegisterDto, metadata: RequestMetadata = {}) {
     if (dto.role === Role.SUPER_ADMIN) {
       throw new BadRequestException('SUPER_ADMIN accounts cannot be self-registered');
     }
@@ -74,6 +74,14 @@ export class AuthService {
     }
 
     const passwordHash = await argon2.hash(dto.password);
+    const medicalSummary = [
+      dto.medicalSummary?.trim(),
+      dto.medicalInterests?.length
+        ? `Préférences médicales: ${dto.medicalInterests.join(', ')}`
+        : undefined,
+    ]
+      .filter(Boolean)
+      .join('\n\n');
     const user = await this.usersService.createUser({
       email: dto.email,
       passwordHash,
@@ -85,19 +93,36 @@ export class AuthService {
         organizationName: dto.organizationName,
         specialty: dto.specialty,
         licenseNumber: dto.licenseNumber,
+        dateOfBirth: dto.dateOfBirth,
+        gender: dto.gender,
+        address: dto.address,
+        nationality: dto.nationality,
+        insurer: dto.insurer,
+        bloodType: dto.bloodType,
+        medicalSummary: medicalSummary || undefined,
+        emergencyContactName: dto.emergencyContactName,
+        emergencyContactPhone: dto.emergencyContactPhone,
       },
     });
-    const tokens = await this.issueTokens(user);
+    const tokens = await this.issueTokens(user, metadata);
+
+    await this.auditLogsService.create({
+      actorId: user.id,
+      action: 'auth_register',
+      entityType: 'User',
+      entityId: user.id,
+      metadata: this.auditMetadata(metadata),
+    });
 
     return {
       data: {
         user: toPublicUser(user),
-        tokens,
+        tokens: this.publicTokens(tokens),
       },
     };
   }
 
-  async login(dto: LoginDto) {
+  async login(dto: LoginDto, metadata: RequestMetadata = {}) {
     const user = await this.usersService.findByEmail(dto.email);
 
     if (!user || !user.isActive) {
@@ -110,49 +135,73 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const publicUser = toPublicUser(user);
-    const tokens = await this.issueTokens(user);
+    const tokens = await this.issueTokens(user, metadata);
+
+    await this.auditLogsService.create({
+      actorId: user.id,
+      action: 'auth_login',
+      entityType: 'UserSession',
+      entityId: tokens.sessionId,
+      metadata: this.auditMetadata(metadata),
+    });
 
     return {
       data: {
-        user: publicUser,
-        tokens,
+        user: toPublicUser(user),
+        tokens: this.publicTokens(tokens),
       },
     };
   }
 
-  async refresh(dto: RefreshTokenDto) {
-    const { refreshTokenRecord, user } = await this.validateRefreshToken(
-      dto.refreshToken,
-    );
+  async refresh(dto: RefreshTokenDto, metadata: RequestMetadata = {}) {
+    const { session, user } = await this.validateRefreshToken(dto.refreshToken);
 
-    await this.refreshTokenModel
-      .findByIdAndUpdate(refreshTokenRecord._id, {
+    await this.prisma.userSession.update({
+      where: { id: session.id },
+      data: {
         revokedAt: new Date(),
-      })
-      .exec();
+        lastSeenAt: new Date(),
+      },
+    });
 
-    const publicUser = toPublicUser(user);
-    const tokens = await this.issueTokens(user);
+    const tokens = await this.issueTokens(user, metadata);
+
+    await this.auditLogsService.create({
+      actorId: user.id,
+      action: 'auth_refresh',
+      entityType: 'UserSession',
+      entityId: tokens.sessionId,
+      metadata: this.auditMetadata({
+        previousSessionId: session.id,
+        ...metadata,
+      }),
+    });
 
     return {
       data: {
-        user: publicUser,
-        tokens,
+        user: toPublicUser(user),
+        tokens: this.publicTokens(tokens),
       },
     };
   }
 
   async logout(dto: RefreshTokenDto) {
-    const { refreshTokenRecord, user } = await this.validateRefreshToken(
-      dto.refreshToken,
-    );
+    const { session, user } = await this.validateRefreshToken(dto.refreshToken);
 
-    await this.refreshTokenModel
-      .findByIdAndUpdate(refreshTokenRecord._id, {
+    await this.prisma.userSession.update({
+      where: { id: session.id },
+      data: {
         revokedAt: new Date(),
-      })
-      .exec();
+        lastSeenAt: new Date(),
+      },
+    });
+
+    await this.auditLogsService.create({
+      actorId: user.id,
+      action: 'auth_logout',
+      entityType: 'UserSession',
+      entityId: session.id,
+    });
 
     return {
       message: 'Logged out successfully',
@@ -163,30 +212,36 @@ export class AuthService {
     return this.usersService.findPublicByIdOrThrow(userId);
   }
 
-  private async issueTokens(user: UserDocument) {
-    const accessPayload: AccessTokenPayload = {
-      userId: user._id.toString(),
-      role: user.role,
-    };
+  private async issueTokens(user: User, metadata: RequestMetadata) {
+    const refreshExpiresIn = this.configService.getOrThrow<string>(
+      'auth.refreshExpiresIn',
+    );
+    const refreshExpiresAt = new Date(
+      Date.now() + durationToMilliseconds(refreshExpiresIn),
+    );
+    const session = await this.prisma.userSession.create({
+      data: {
+        userId: user.id,
+        refreshTokenHash: 'pending',
+        userAgent: metadata.userAgent,
+        ipAddress: metadata.ipAddress,
+        expiresAt: refreshExpiresAt,
+      },
+    });
 
-    const refreshTokenId = new Types.ObjectId();
-    const refreshPayload: RefreshTokenPayload = {
-      ...accessPayload,
-      tokenId: refreshTokenId.toString(),
+    const accessPayload: AccessTokenPayload = {
+      userId: user.id,
+      role: user.role,
+      sessionId: session.id,
     };
+    const refreshPayload: RefreshTokenPayload = accessPayload;
     const accessExpiresInSeconds = Math.floor(
       durationToMilliseconds(
         this.configService.getOrThrow<string>('auth.accessExpiresIn'),
       ) / 1000,
     );
-    const refreshExpiresIn = this.configService.getOrThrow<string>(
-      'auth.refreshExpiresIn',
-    );
     const refreshExpiresInSeconds = Math.floor(
       durationToMilliseconds(refreshExpiresIn) / 1000,
-    );
-    const refreshExpiresAt = new Date(
-      Date.now() + durationToMilliseconds(refreshExpiresIn),
     );
 
     const [accessToken, refreshToken] = await Promise.all([
@@ -200,18 +255,17 @@ export class AuthService {
       }),
     ]);
 
-    const tokenHash = await argon2.hash(refreshToken);
-
-    await this.refreshTokenModel.create({
-      _id: refreshTokenId,
-      userId: user._id,
-      tokenHash,
-      expiresAt: refreshExpiresAt,
+    await this.prisma.userSession.update({
+      where: { id: session.id },
+      data: {
+        refreshTokenHash: await argon2.hash(refreshToken),
+      },
     });
 
     return {
       accessToken,
       refreshToken,
+      sessionId: session.id,
     };
   }
 
@@ -229,33 +283,54 @@ export class AuthService {
       throw new UnauthorizedException('Invalid refresh token');
     }
 
-    const refreshTokenRecord = await this.refreshTokenModel
-      .findById(payload.tokenId)
-      .exec();
-    const user = await this.usersService.findById(payload.userId);
+    const session = await this.prisma.userSession.findUnique({
+      where: { id: payload.sessionId },
+      include: {
+        user: true,
+      },
+    });
 
     if (
-      !refreshTokenRecord ||
-      !user ||
-      refreshTokenRecord.userId.toString() !== payload.userId ||
-      refreshTokenRecord.revokedAt ||
-      refreshTokenRecord.expiresAt <= new Date()
+      !session ||
+      session.userId !== payload.userId ||
+      session.revokedAt ||
+      session.expiresAt <= new Date() ||
+      !session.user.isActive
     ) {
       throw new UnauthorizedException('Refresh token has expired or is invalid');
     }
 
     const matches = await argon2.verify(
-      refreshTokenRecord.tokenHash,
+      session.refreshTokenHash,
       rawRefreshToken,
     );
 
-    if (!matches || !user.isActive) {
+    if (!matches) {
       throw new UnauthorizedException('Refresh token has expired or is invalid');
     }
 
     return {
-      refreshTokenRecord,
-      user,
+      session,
+      user: session.user,
     };
+  }
+
+  private publicTokens(tokens: {
+    accessToken: string;
+    refreshToken: string;
+    sessionId: string;
+  }) {
+    return {
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+    };
+  }
+
+  private auditMetadata(metadata: RequestMetadata): Prisma.InputJsonObject {
+    return Object.fromEntries(
+      Object.entries(metadata).filter((entry): entry is [string, string] =>
+        typeof entry[1] === 'string',
+      ),
+    );
   }
 }

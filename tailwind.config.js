@@ -8,6 +8,7 @@ export default {
         display: ['"Bricolage Grotesque"', "system-ui", "sans-serif"],
         sans: ['"Hanken Grotesk"', "system-ui", "sans-serif"],
         mono: ['"JetBrains Mono"', "ui-monospace", "monospace"],
+        arabic: ['"Noto Sans Arabic"', '"Hanken Grotesk"', "sans-serif"],
       },
       colors: {
         brand: {

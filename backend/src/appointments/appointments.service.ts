@@ -54,6 +54,22 @@ export class AppointmentsService {
     const professionalId =
       dto.professionalId ?? careRequest?.professionalId ?? null;
 
+    if (careRequest?.clinicId && clinicId && careRequest.clinicId !== clinicId) {
+      throw new BadRequestException(
+        'The appointment clinic must match the care request clinic',
+      );
+    }
+
+    if (
+      careRequest?.professionalId &&
+      professionalId &&
+      careRequest.professionalId !== professionalId
+    ) {
+      throw new BadRequestException(
+        'The appointment professional must match the care request professional',
+      );
+    }
+
     if (clinicId) {
       await this.ensureClinicExists(clinicId);
     }
@@ -63,6 +79,14 @@ export class AppointmentsService {
     if (professionalId) {
       await this.ensureProfessionalBelongsToClinic(professionalId, clinicId);
     }
+
+    await this.enforceAppointmentPatientAccess(
+      user,
+      patientProfile.id,
+      clinicId,
+      professionalId,
+      careRequest,
+    );
 
     const appointment = await this.prisma.appointment.create({
       data: {
@@ -351,6 +375,111 @@ export class AppointmentsService {
     }
 
     throw new ForbiddenException('You are not allowed to manage this appointment');
+  }
+
+  private async enforceAppointmentPatientAccess(
+    user: RequestUser,
+    patientId: string,
+    clinicId: string | null,
+    professionalId: string | null,
+    careRequest: {
+      clinicId: string | null;
+      professionalId: string | null;
+    } | null,
+  ) {
+    if (user.role === Role.SUPER_ADMIN) {
+      return;
+    }
+
+    if (user.role === Role.CLINIC_ADMIN) {
+      if (!clinicId) {
+        throw new BadRequestException(
+          'clinicId is required for clinic admin appointment creation',
+        );
+      }
+
+      if (careRequest) {
+        if (careRequest.clinicId !== clinicId) {
+          throw new ForbiddenException(
+            'The care request is not assigned to this clinic',
+          );
+        }
+
+        return;
+      }
+
+      const hasExistingClinicRelationship = await this.prisma.patientProfile.count({
+        where: {
+          id: patientId,
+          OR: [
+            {
+              careRequests: {
+                some: { clinicId },
+              },
+            },
+            {
+              appointments: {
+                some: { clinicId },
+              },
+            },
+          ],
+        },
+      });
+
+      if (!hasExistingClinicRelationship) {
+        throw new ForbiddenException(
+          'The patient is not assigned to this clinic',
+        );
+      }
+
+      return;
+    }
+
+    if (user.role === Role.PROFESSIONAL) {
+      if (!professionalId) {
+        throw new BadRequestException(
+          'professionalId is required for professional appointment creation',
+        );
+      }
+
+      if (careRequest) {
+        if (careRequest.professionalId !== professionalId) {
+          throw new ForbiddenException(
+            'The care request is not assigned to this professional',
+          );
+        }
+
+        return;
+      }
+
+      const hasExistingProfessionalRelationship = await this.prisma.patientProfile.count({
+        where: {
+          id: patientId,
+          OR: [
+            {
+              careRequests: {
+                some: { professionalId },
+              },
+            },
+            {
+              appointments: {
+                some: { professionalId },
+              },
+            },
+          ],
+        },
+      });
+
+      if (!hasExistingProfessionalRelationship) {
+        throw new ForbiddenException(
+          'The patient is not assigned to this professional',
+        );
+      }
+
+      return;
+    }
+
+    throw new ForbiddenException('You are not allowed to create appointments');
   }
 
   private async ensureClinicAdminMembership(userId: string, clinicId: string) {

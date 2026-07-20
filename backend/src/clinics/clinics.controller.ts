@@ -22,6 +22,51 @@ import { ClinicsService } from './clinics.service';
 export class ClinicsController {
   constructor(private readonly clinicsService: ClinicsService) {}
 
+  @Get('me')
+  @Roles(Role.CLINIC_ADMIN, Role.SUPER_ADMIN)
+  async getMe(@CurrentUser() user: RequestUser, @Query('clinicId') clinicId?: string) {
+    return this.clinicsService.getMe(user, clinicId);
+  }
+
+  @Get('me/dashboard')
+  @Roles(Role.CLINIC_ADMIN, Role.SUPER_ADMIN)
+  async getMyDashboard(
+    @CurrentUser() user: RequestUser,
+    @Query('clinicId') clinicId?: string,
+  ) {
+    return this.clinicsService.getDashboard(user, clinicId);
+  }
+
+  @Get('me/patients')
+  @Roles(Role.CLINIC_ADMIN, Role.SUPER_ADMIN)
+  async listMyPatients(
+    @CurrentUser() user: RequestUser,
+    @Query() dto: PaginationQueryDto,
+    @Query('clinicId') clinicId?: string,
+  ) {
+    return this.clinicsService.listPatients(user, dto, clinicId);
+  }
+
+  @Get('me/documents')
+  @Roles(Role.CLINIC_ADMIN, Role.SUPER_ADMIN)
+  async listMyDocuments(
+    @CurrentUser() user: RequestUser,
+    @Query() dto: PaginationQueryDto,
+    @Query('clinicId') clinicId?: string,
+  ) {
+    return this.clinicsService.listDocuments(user, dto, clinicId);
+  }
+
+  @Get('me/planning')
+  @Roles(Role.CLINIC_ADMIN, Role.SUPER_ADMIN)
+  async listMyPlanning(
+    @CurrentUser() user: RequestUser,
+    @Query() dto: PaginationQueryDto,
+    @Query('clinicId') clinicId?: string,
+  ) {
+    return this.clinicsService.listPlanning(user, dto, clinicId);
+  }
+
   @Post()
   @Roles(Role.SUPER_ADMIN)
   async create(@Body() dto: CreateClinicDto) {

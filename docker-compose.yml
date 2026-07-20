@@ -1,14 +1,18 @@
 services:
-  mongo:
-    image: mongo:7
-    container_name: trivacare-mongo
+  postgres:
+    image: postgres:16
+    container_name: trivacare-postgres
     restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-trivacare}
+      POSTGRES_USER: ${POSTGRES_USER:-trivacare}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
     ports:
-      - "27017:27017"
+      - "127.0.0.1:5432:5432"
     volumes:
-      - trivacare-mongo-data:/data/db
+      - trivacare-postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "mongosh --quiet --eval \"db.adminCommand('ping').ok\" mongodb://127.0.0.1:27017/admin | grep 1"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-trivacare} -d $${POSTGRES_DB:-trivacare}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -19,19 +23,28 @@ services:
     container_name: trivacare-backend
     restart: unless-stopped
     depends_on:
-      mongo:
+      postgres:
         condition: service_healthy
     environment:
-      MONGODB_URI: ${MONGODB_URI:-mongodb://mongo:27017/trivacare}
+      NODE_ENV: ${NODE_ENV:-production}
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL}
       PORT: ${PORT:-3001}
       API_PREFIX: ${API_PREFIX:-}
-      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-change-this-access-secret}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?set JWT_ACCESS_SECRET}
       JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
-      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-change-this-refresh-secret}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?set JWT_REFRESH_SECRET}
       JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+      BILLING_PROVIDER_WEBHOOK_SECRET: ${BILLING_PROVIDER_WEBHOOK_SECRET:?set BILLING_PROVIDER_WEBHOOK_SECRET}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:4173,http://127.0.0.1:4173,http://localhost:5173,http://127.0.0.1:5173}
     ports:
-      - "3001:3001"
+      - "127.0.0.1:3001:3001"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
 
 volumes:
-  trivacare-mongo-data:
+  trivacare-postgres-data:

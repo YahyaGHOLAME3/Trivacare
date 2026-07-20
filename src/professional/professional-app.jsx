@@ -1,9 +1,35 @@
 import { useMemo, useState } from "react";
 import { Navigate, useParams } from "react-router-dom";
 import { practitionerNav, practitionerNotes, practitionerProfile } from "../shared/data/backoffice";
+import { getSession } from "../shared/auth";
 import { AppShell } from "../shared/ui/shell";
 import { Badge, Button, Card, Field, InfoList, PageHeader, StatCard, Toggle, inputClassName } from "../shared/ui/primitives";
 import { SosModal } from "../shared/ui/modals";
+
+function formatName(user) {
+  return [user?.firstName, user?.lastName].filter(Boolean).join(" ").trim();
+}
+
+function getInitials(name) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "P";
+}
+
+function buildProfessionalDisplay(session) {
+  const user = session?.user || {};
+  const name = formatName(user) || practitionerProfile.name;
+  const specialty = user.profile?.specialty;
+
+  return {
+    name,
+    initials: getInitials(name),
+    meta: specialty || user.email || practitionerProfile.meta,
+  };
+}
 
 function ProfessionalDashboard() {
   return (
@@ -212,7 +238,7 @@ function ProfessionalMessagesPage() {
   );
 }
 
-function ProfessionalSettingsPage() {
+function ProfessionalSettingsPage({ professional }) {
   const [alerts, setAlerts] = useState(true);
   const [signature, setSignature] = useState(true);
   return (
@@ -224,8 +250,8 @@ function ProfessionalSettingsPage() {
         <Card className="space-y-4 p-5 sm:p-6">
           <InfoList
             items={[
-              ["Professionnel", practitionerProfile.name],
-              ["Spécialité", "Cardiologie"],
+              ["Professionnel", professional.name],
+              ["Spécialité", professional.meta],
               ["Ville", "Marrakech"],
               ["Mode d'accès", "Compte nominatif"],
             ]}
@@ -266,6 +292,7 @@ const PROFESSIONAL_PAGES = {
 export function ProfessionalApp() {
   const { page = "tableau-de-bord" } = useParams();
   const [sosOpen, setSosOpen] = useState(false);
+  const professional = useMemo(() => buildProfessionalDisplay(getSession("professionnel")), []);
   const CurrentPage = useMemo(
     () => PROFESSIONAL_PAGES[page] || ProfessionalDashboard,
     [page],
@@ -283,13 +310,13 @@ export function ProfessionalApp() {
         navItems={practitionerNav}
         current={page}
         onSOS={() => setSosOpen(true)}
-        user={practitionerProfile}
+        user={professional}
         headerTitle="Suivi praticien"
         searchPlaceholder="Rechercher un patient, une note, une prescription…"
         persona="professionnel"
         profileHref="/professionnel/parametres"
       >
-        <CurrentPage />
+        <CurrentPage professional={professional} />
       </AppShell>
       <SosModal
         open={sosOpen}

@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import { AppIcon } from "../../assets/icons/app-icon";
 
 export function Logo({ badge }) {
@@ -22,7 +24,7 @@ export function Logo({ badge }) {
 
 export function Card({ className = "", children }) {
   return (
-    <div className={`motion-card rounded-4xl border border-slate-200 bg-white shadow-soft ${className}`}>
+    <div className={`motion-card rounded-[2rem] border border-slate-200 bg-white/90 shadow-lift backdrop-blur ${className}`}>
       {children}
     </div>
   );
@@ -37,9 +39,9 @@ export function Button({
   ...props
 }) {
   const variants = {
-    primary: "bg-brand-600 text-white hover:bg-brand-700 shadow-glow",
-    teal: "bg-teal-600 text-white hover:bg-teal-700 shadow-soft",
-    ghost: "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+    primary: "bg-brand-600 text-white hover:bg-brand-500 shadow-glow hover:-translate-y-0.5",
+    teal: "bg-teal-600 text-white hover:bg-teal-700 shadow-soft hover:-translate-y-0.5",
+    ghost: "border border-slate-200 bg-white/90 text-slate-700 hover:bg-slate-50",
     subtle: "bg-slate-100 text-slate-700 hover:bg-slate-200",
     danger: "bg-rose-600 text-white hover:bg-rose-700",
   };
@@ -174,3 +176,26 @@ export function InfoList({ items }) {
 
 export const inputClassName =
   "h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-[14px] font-medium text-ink transition-colors placeholder:text-slate-400 hover:border-brand-300 focus-visible:border-brand-500 focus-visible:bg-white";
+
+export function PasswordInput({ className = "", ...props }) {
+  const [visible, setVisible] = useState(false);
+
+  return (
+    <div className="relative">
+      <input
+        {...props}
+        type={visible ? "text" : "password"}
+        className={`${inputClassName} pr-12 ${className}`.trim()}
+      />
+      <button
+        type="button"
+        aria-label={visible ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+        aria-pressed={visible}
+        onClick={() => setVisible((current) => !current)}
+        className="absolute right-1.5 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-lg text-slate-500 transition-colors hover:bg-slate-200/70 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+      >
+        <AppIcon name={visible ? "eye-off" : "eye"} size={18} />
+      </button>
+    </div>
+  );
+}

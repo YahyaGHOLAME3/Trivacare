@@ -12,15 +12,8 @@ export function App() {
   const location = useLocation();
 
   useEffect(() => {
-    const targets = Array.from(
-      document.querySelectorAll(
-        ".motion-fade-up, .motion-fade-down, .motion-fade-left, .motion-fade-right, .motion-card",
-      ),
-    );
-
-    if (!targets.length) return undefined;
-
-    targets.forEach((node) => node.classList.remove("reveal-visible"));
+    const selector = ".motion-fade-up, .motion-fade-down, .motion-fade-left, .motion-fade-right, .motion-card";
+    const observed = new Set();
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -36,9 +29,40 @@ export function App() {
       },
     );
 
-    targets.forEach((node) => observer.observe(node));
+    const observeTarget = (node) => {
+      if (!(node instanceof Element) || observed.has(node)) return;
+      observed.add(node);
+      observer.observe(node);
+    };
 
-    return () => observer.disconnect();
+    const observeTree = (root = document) => {
+      if (root instanceof Element && root.matches(selector)) {
+        observeTarget(root);
+      }
+
+      root.querySelectorAll?.(selector).forEach(observeTarget);
+    };
+
+    document.querySelectorAll(selector).forEach((node) => {
+      node.classList.remove("reveal-visible");
+    });
+    observeTree();
+
+    const mutationObserver = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach((node) => observeTree(node));
+      });
+    });
+
+    mutationObserver.observe(document.body, {
+      childList: true,
+      subtree: true,
+    });
+
+    return () => {
+      observer.disconnect();
+      mutationObserver.disconnect();
+    };
   }, [location.pathname]);
 
   return (

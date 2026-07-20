@@ -1,12 +1,13 @@
 import { Role } from '../common/enums/role.enum';
 
 interface UserLike {
-  _id: string | { toString(): string };
+  id?: string;
+  _id?: string | { toString(): string };
   email: string;
   role: Role;
-  firstName?: string;
-  lastName?: string;
-  phone?: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  phone?: string | null;
   isActive: boolean;
   profile?: {
     organizationName?: string;
@@ -19,7 +20,7 @@ interface UserLike {
 
 export function toPublicUser(user: UserLike) {
   return {
-    id: user._id.toString(),
+    id: user.id ?? user._id?.toString(),
     email: user.email,
     role: user.role,
     firstName: user.firstName ?? null,

@@ -1,9 +1,35 @@
 import { useMemo, useState } from "react";
 import { Navigate, useParams } from "react-router-dom";
 import { clinicNav, clinicPipeline, clinicProfile, clinicQueue } from "../shared/data/backoffice";
+import { getSession } from "../shared/auth";
 import { AppShell } from "../shared/ui/shell";
 import { Badge, Button, Card, Field, InfoList, PageHeader, StatCard, Toggle, inputClassName } from "../shared/ui/primitives";
 import { SosModal } from "../shared/ui/modals";
+
+function formatName(user) {
+  return [user?.firstName, user?.lastName].filter(Boolean).join(" ").trim();
+}
+
+function getInitials(name) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "C";
+}
+
+function buildClinicDisplay(session) {
+  const user = session?.user || {};
+  const organizationName = user.profile?.organizationName;
+  const name = organizationName || formatName(user) || clinicProfile.name;
+
+  return {
+    name,
+    initials: getInitials(name),
+    meta: organizationName ? "Établissement clinique" : user.email || clinicProfile.meta,
+  };
+}
 
 function ClinicDashboard() {
   return (
@@ -207,7 +233,7 @@ function ClinicDocumentsPage() {
   );
 }
 
-function ClinicSettingsPage() {
+function ClinicSettingsPage({ clinic }) {
   const [alerts, setAlerts] = useState(true);
   return (
     <div className="space-y-5"> 
@@ -218,9 +244,9 @@ function ClinicSettingsPage() {
         <Card className="space-y-4 p-5 sm:p-6">
           <InfoList
             items={[
-              ["Établissement", "Clinique Internationale Atlas"],
-              ["Référent", "Mme Sofia Idrissi"],
-              ["Ville", "Marrakech"],
+              ["Établissement", clinic.name],
+              ["Référent", clinic.meta],
+              ["Ville", clinicProfile.meta],
               ["Canal de garde", "Téléphone + messagerie"],
             ]}
           />
@@ -252,6 +278,7 @@ export function ClinicApp() {
   const { page = "tableau-de-bord" } = useParams();
   const [sosOpen, setSosOpen] = useState(false);
   const CurrentPage = useMemo(() => CLINIC_PAGES[page] || ClinicDashboard, [page]);
+  const clinic = useMemo(() => buildClinicDisplay(getSession("clinique")), []);
 
   if (!CLINIC_PAGES[page]) {
     return <Navigate to="/clinique/tableau-de-bord" replace />;
@@ -265,13 +292,13 @@ export function ClinicApp() {
         navItems={clinicNav}
         current={page}
         onSOS={() => setSosOpen(true)}
-        user={clinicProfile}
+        user={clinic}
         headerTitle="Pilotage de l'établissement"
         searchPlaceholder="Rechercher un patient, une admission, un document…"
         persona="clinique"
         profileHref="/clinique/parametres"
       >
-        <CurrentPage />
+        <CurrentPage clinic={clinic} />
       </AppShell>
       <SosModal
         open={sosOpen}
